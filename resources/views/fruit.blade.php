@@ -80,6 +80,7 @@
         // Update Backend for new value.
         updateFruitTable(myFruit, myType, myItem, myItemType);
     }
+
     function updateFruitTable(myFruit, myType, myItem, myItemType) {
         $.ajax({
             headers: {
@@ -95,6 +96,7 @@
             },
             success: function() {
                 console.log("New Fruit Added");
+                reload();
             }
         });
     }
@@ -138,7 +140,7 @@
     };
 
     function reload() {
-        // location.reload();
+        location.reload();
     }
 </script>
 <style>

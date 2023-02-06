@@ -33,9 +33,9 @@ class FruitController extends Controller
     public function createFruit(Request $request) {
         $validated = $request->validate([
             'name' => 'required|string',
-            'type' => 'sometimes|string',
-            'item' => 'sometimes|string',
-            'item_type' => 'sometimes|string'
+            'type' => 'sometimes',
+            'item' => 'sometimes',
+            'item_type' => 'sometimes'
         ]);
 
         if($validated) {
@@ -48,12 +48,7 @@ class FruitController extends Controller
             }
 
             if($request->type) {
-                FruitChildren::Create([
-                    'name' => $request->type,
-                    'item' => $request->item,
-                    'item_type' => $request->item_type,
-                    'fruit_id' => $fruit->id
-                ]);
+                $this->makeNewFruitChild($request->type, $request->item, $request->item_type, $fruit->id);
             }
         }
         return response('New Fruit Created', 200);
@@ -144,11 +139,15 @@ class FruitController extends Controller
      * @saves new FruitChild Row
      */
     public function makeNewFruitChild($name, $item, $item_type, $fruit_id) {
-        $fruitChild = new FruitChildren;
-        $fruitChild->name = $name;
-        $fruitChild->item = $item;
-        $fruitChild->item_type = $item_type;
-        $fruitChild->fruit_id = $fruit_id;
-        $fruitChild->save();
+        if(!FruitChildren::where('name', $name)->where('item', $item)->where('item_type', $item_type)->where('fruit_id', $fruit_id)->exists()) {
+            $fruitChild = new FruitChildren;
+            $fruitChild->name = $name;
+            $fruitChild->item = $item;
+            $fruitChild->item_type = $item_type;
+            $fruitChild->fruit_id = $fruit_id;
+            $fruitChild->save();
+        } else {
+            return response('Already Exists', 422);
+        }
     }
 }
