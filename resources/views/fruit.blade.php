@@ -18,16 +18,21 @@
 </div>
 <ul id="fruitsUl">
     @foreach($fruits as $fruit)
-        <li value='fruit' class="{{$fruit->id}}">{{$fruit->type}}</li>
-        @foreach($fruit->children as $i => $type)
-            <ul>
-                <li value='name' class="{{$type->id}}">{{$type->name}}</li>
-                @if($type->item)
+        @foreach($fruit as $fruitAtt)
+        <li value={{$fruitAtt['fruit']}} class="fruit">{{$fruitAtt['fruit']}}</li>
+            @foreach($fruitAtt['array'] as $fruitGroup)
+            @if(!empty($fruitGroup['name']))
+                <ul>
+                    <li value={{$fruitGroup['name']}} class="category">{{$fruitGroup['name'] ?? null}}</li>
                     <ul>
-                        <li value='item' class="{{$type->id}}">{{$type->item}} {{$type->item_type}}</li>
+                        <li value={{$fruitGroup['type']}} class="products">Product: {{$fruitGroup['item'] ?? null}} </li>
+                        <ul>
+                            <li value={{$fruitGroup['type']}} class="type">Type: {{$fruitGroup['type'] ?? null}} </li>
+                        </ul>
                     </ul>
+                </ul>
                 @endif
-            </ul>
+            @endforeach
         @endforeach
     @endforeach
 </ul>
@@ -52,6 +57,9 @@
         setTimeout(callEveryHour, difference);
     }
 
+    /**
+     * Add close button to all lists.
+     */
     for (var i = 0; i < list.length; i++) {
         var span = document.createElement("SPAN");
         var txt = document.createTextNode("\u00D7");
@@ -60,11 +68,15 @@
         list[i].appendChild(span);
     }
 
+    /**
+     * Watcher for close button on any list item
+     */
     for (var i = 0; i < close.length; i++) {
         close[i].onclick = function(i) {
+            console.log('uh');
             var div = this.parentElement;
+            removeRow(this.parentElement.getAttribute('value'), this.parentElement.getAttribute('class'));
             div.style.display = "none";
-            removeRow(this.parentElement.getAttribute('class'), this.parentElement.getAttribute('value'));
         }
     }
 
@@ -101,7 +113,7 @@
         });
     }
 
-    function removeRow(id, type) {
+    function removeRow(name, type) {
         $.ajax({
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -109,7 +121,7 @@
             type: "POST",
             url: '/removeFruit',
             data: {
-                'id':id,
+                'name':name,
                 'type':type
             },
             success: function() {
@@ -140,7 +152,7 @@
     };
 
     function reload() {
-        location.reload();
+        // location.reload();
     }
 </script>
 <style>

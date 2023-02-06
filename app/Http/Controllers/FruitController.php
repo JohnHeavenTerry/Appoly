@@ -2,31 +2,42 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Fruit;
-use App\Models\FruitChildren;
-use Illuminate\Support\Facades\Https;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Input;
+use App\Models\{
+    Fruit,
+    FruitChildren,
+    FruitProduct,
+    FruitProductTypes,
+};
+
+use App\Services\FruitService;
+
+use Illuminate\{
+    Support\Facades\Https,
+    Http\Request,
+    Supprt\Facades\Input
+};
 
 class FruitController extends Controller
 {
+    public FruitService $fruitService;
+
     /**
      * Returns the fruit page
      * passes $fruits from Fruits Table
      * @param Request $request
-     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View
+     * @return \Illuminate\Contracts\View\View
      */
     public function fruitIndex(Request $request) {
-        $fruits = Fruit::orderBy('type')->with(array('children' => function($query) {
-            $query->orderBy('name', 'DESC');
-        }))->get();
-
-        return view('fruit')->with(['fruits' => $fruits]);
+        $fruits = new FruitService;
+        return view('fruit')->with(['fruits' => $fruits->fruitData()]);
     }
 
     /**
      * Create Fruit adds new Fruit
-     * Takes In Name Of Fruit
+     * Takes In Name Of Fruit as requirement
+     * for new or existing entires.
+     *
+     * further use into creation of
      * @param Request $request
      * @return void
      */
@@ -47,8 +58,14 @@ class FruitController extends Controller
                 $fruit = Fruit::firstWhere('type', $request->name);
             }
 
+            /*
+             * Make new fruit child if entries have been passed.
+             * This allows us to add other categories to existing
+             * Fruits on the Frontend using the same Interface.
+             */
             if($request->type) {
-                $this->makeNewFruitChild($request->type, $request->item, $request->item_type, $fruit->id);
+                $fruitService = new FruitService;
+                $fruitService->makeNewFruitChild($request->type, $request->item, $request->item_type, $fruit->id);
             }
         }
         return response('New Fruit Created', 200);
@@ -63,30 +80,30 @@ class FruitController extends Controller
      */
     public function removeFruit(Request $request) {
         $validated = $request->validate([
-            'id' => 'required|integer',
+            'name' => 'required|string',
             'type' => 'required|string'
         ]);
-
         if($validated) {
-            $allChildren = [];
             switch ($request->type) {
                 case 'fruit':
-                    $fruit = Fruit::find($request->id);
+                    $fruit = Fruit::firstWhere('type', $request->name);
                     $allChildren = $fruit->children;
                     $fruit->delete();
                     break;
 
-                case 'name':
-                    $name = FruitChildren::find($request->id)->name;
-                    $allChildren = FruitChildren::where('name', $name)->get();
+                case 'category':
+                    $allChildren = FruitChildren::firstWhere('name', $request->name)->get();
+                    if($allChildren) {
+                        foreach ($allChildren as $child) {
+                            $child->delete();
+                        }
+                    }
                     break;
 
-                case 'item':
-                    FruitChildren::find($request->id)->delete();
+                case 'products':
+                case 'type':
+                    FruitProductTypes::firstWhere('item_type', $request->name)->delete();
                     break;
-            }
-            foreach($allChildren as $child) {
-                $child->delete();
             }
 
             return response('success', 200);
@@ -94,7 +111,7 @@ class FruitController extends Controller
     }
 
     /** Grabs contents from Json Endpoint
-     *  For fruit data
+     *  For fruit data and add to the database
      * @param Request $request
      * @return array
      */
@@ -103,6 +120,7 @@ class FruitController extends Controller
             $response = file_get_contents('https://dev.shepherds-mountain.appoly.io/fruit.json');
             $collectionFruit = collect(json_decode($response));
             $fruits = $collectionFruit->flatten(3);
+            $fruitService = new FruitService;
         } catch(Exception $error) {
             dd($error);
         }
@@ -117,37 +135,19 @@ class FruitController extends Controller
                     'type' => $fruit->label
                 ]);
             }
+
             // Sort through each level of Json Array into Table
             foreach($fruit->children as $type) {
                 if(!$type->children) {
-                    self::makeNewFruitChild($type->label, '', '', $fruitCategory->id);}
+                    $fruitService->makeNewFruitChild($type->label, '', '', $fruitCategory->id);
+                }
                 foreach($type->children as $item) {
-                    if(!$item->children) self::makeNewFruitChild($type->label, $item->label, '', $fruitCategory->id);
+                    if(!$item->children) $fruitService->makeNewFruitChild($type->label, $item->label, '', $fruitCategory->id);
                     foreach($item->children as $flavour) {
-                        self::makeNewFruitChild($type->label, $item->label, $flavour->label, $fruitCategory->id);
+                        $fruitService->makeNewFruitChild($type->label, $item->label, $flavour->label, $fruitCategory->id);
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * @param $name
-     * @param $item
-     * @param $item_type
-     * @param $fruit_id
-     * @saves new FruitChild Row
-     */
-    public function makeNewFruitChild($name, $item, $item_type, $fruit_id) {
-        if(!FruitChildren::where('name', $name)->where('item', $item)->where('item_type', $item_type)->where('fruit_id', $fruit_id)->exists()) {
-            $fruitChild = new FruitChildren;
-            $fruitChild->name = $name;
-            $fruitChild->item = $item;
-            $fruitChild->item_type = $item_type;
-            $fruitChild->fruit_id = $fruit_id;
-            $fruitChild->save();
-        } else {
-            return response('Already Exists', 422);
         }
     }
 }

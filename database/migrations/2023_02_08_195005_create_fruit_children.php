@@ -16,10 +16,10 @@ return new class extends Migration
         Schema::create('fruit_children', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('item')->nullable();
-            $table->string('item_type')->nullable();
+            $table->bigInteger('item_id')->nullable();
             $table->bigInteger('fruit_id');
             $table->foreign('fruit_id')->references('id')->on('fruits')->onDelete('cascade');
+            $table->foreign('item_id')->references('id')->on('fruit_product')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -35,6 +35,8 @@ return new class extends Migration
         Schema::table('fruit_children', function (Blueprint $table) {
             $table->dropForeign(['fruit_id']);
             $table->dropColumn('fruit_id');
+            $table->dropForeign(['item_id']);
+            $table->dropColumn('item_id');
         });
 
         Schema::dropIfExists('fruit_children');
