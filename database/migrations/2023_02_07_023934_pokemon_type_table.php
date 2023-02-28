@@ -13,11 +13,12 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('fruit_product', function (Blueprint $table) {
+        Schema::create('pokemon_type', function (Blueprint $table) {
             $table->id();
-            $table->string('item');
-            $table->bigInteger('item_type_id')->nullable();
-            $table->foreign('item_type_id')->references('id')->on('fruit_product_types')->onDelete('cascade');
+            $table->bigInteger('type_id');
+            $table->bigInteger('pokemon_id');
+            $table->foreign('type_id')->references('id')->on('type')->onDelete('cascade');
+            $table->foreign('pokemon_id')->references('id')->on('pokemonDetails')->onDelete('cascade');
             $table->timestamps();
         });
     }
